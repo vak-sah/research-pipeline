@@ -1,0 +1,3 @@
+_target_: research_pipeline.losses.composite.CompositeLoss
+ce_weight: 1.0
+# To add a term later: add its weight here and the term in CompositeLoss.
