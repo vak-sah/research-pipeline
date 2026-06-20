@@ -85,18 +85,73 @@ Each run writes to a gitignored `outputs/<timestamp>/`:
 overrides fail at **startup** with a clear error (e.g. `trainer.max_epochs=abc`
 or `trainer.max_epochsX=3`), not deep in training.
 
-## How to add a component
+## How to add a component (what EXISTS today)
+
+Each is **one config file + one class**, wired by `_target_`. The training loop
+(`train.py`) is never edited for any of these.
 
 - **Model**: add `models/<name>.py` returning a dict + `configs/model/<name>.yaml`
   (`_target_`). Run `rp-train model=<name>`.
-- **Loss term**: add a `"<name>": weight * value` entry in `CompositeLoss` +
-  expose its weight in `configs/loss/composite.yaml`.
-- **Dataset**: add a DataModule + `configs/data/<name>.yaml` (set `transform` /
-  `splitter`). Run `rp-train data=<name>`.
+- **Loss term**: add a `terms["<name>"] = weight * value` line in `CompositeLoss`
+  (reading only the output keys it needs) + expose its weight in
+  `configs/loss/composite.yaml`. (`losses/composite.py` is the one class kept rich
+  on purpose, so this stays additive.)
+- **Dataset**: add a `LightningDataModule` yielding `(input, target)` batches +
+  `configs/data/<name>.yaml`. Run `rp-train data=<name>`.
+- **Transform**: add a factory in `data/transforms.py` + point the `transform:`
+  slot in a `configs/data/<name>.yaml`.
+- **Splitter**: add a `dataset -> (train_idx, val_idx)` callable in
+  `data/splitter.py` + point the `splitter:` slot in a `configs/data/<name>.yaml`.
 - **Optimizer / Scheduler**: add `configs/{optimizer,scheduler}/<name>.yaml`
   (`_target_` to the torch class + its args).
 - **Callback**: add an entry to `configs/callbacks/default.yaml` (`_target_` to a
   Lightning callback), or a new callbacks file.
+
+### Device / precision (not a CLI knob)
+`accelerator=auto`; `utils/device.py` resolves the precision/compile/worker plan
+per device and `train.py` passes it to the `Trainer` as explicit kwargs — so they
+**override** any `trainer.accelerator=` / `trainer.precision=` you pass on the CLI.
+To force the non-CUDA path without code, hide CUDA: `CUDA_VISIBLE_DEVICES= rp-train`.
+To change the policy itself, edit `resolve_device_plan` (it returns a `DevicePlan`;
+keeping that return shape is safe — see below).
+
+## Deferred — add when needed (one config + one class)
+
+These were intentionally **not** built (YAGNI). The architecture already accepts
+each as an additive change; none of them exist yet.
+
+- **Custom training dynamic** (extra hooks / `automatic_optimization=False` for
+  manual/recursive loops): subclass `LitClassifier`, override `training_step`
+  and/or `configure_optimizers`, and set `self.automatic_optimization = False`.
+  To select it from config, make the LightningModule `_target_`-instantiated in
+  `train.py` instead of hard-constructed.
+- **Custom eval / inference strategy** (test-time compute, validation pooling,
+  TTA/MC passes): add a small strategy component and inject it into the
+  LightningModule, delegating `validation_step` / `test_step` to it.
+- **Custom `collate_fn`** (non-default batch construction): add a `collate_fn`
+  slot to the DataModule `__init__` and pass it to the `DataLoader`. Today the
+  default collate is used and the batch is `(input, target)`.
+
+## Safe vs ripple
+
+**Stays inside a contract (safe — purely additive, nothing downstream changes):**
+- A new **model**, **dataset**, **transform**, **splitter**, **optimizer**,
+  **scheduler**, **callback**, or **experiment**.
+- A new **loss term** in `CompositeLoss`, or a new **model output key** (e.g.
+  `embedding`) consumed only by a new term. `total` stays the sum; existing
+  consumers of `logits` are untouched.
+- Editing the **device plan** policy while keeping the `DevicePlan` return shape.
+
+**Changes a contract shape (may ripple — touches `train.py` / `lit_module.py` /
+existing consumers):**
+- **Renaming/removing** an existing output key (e.g. `logits`) — breaks the loss,
+  accuracy logging, and any term that reads it.
+- Changing the **batch structure** away from `(input, target)` — ripples into
+  `LitClassifier._shared_step`.
+- Making the **LightningModule swappable** or flipping `automatic_optimization`,
+  adding an **eval-strategy** injection, or adding a **`collate_fn` slot** — each
+  widens a constructor/loop surface (`train.py` and/or the DataModule/LitModule
+  `__init__`), so do it deliberately, not as a drop-in config swap.
 
 ## Experiments (IMMUTABLE RULE)
 
