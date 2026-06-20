@@ -1,0 +1,27 @@
+# @package _global_
+# IMMUTABLE, named experiment. To change it, CLONE to a new file -- never edit
+# in place (preserves cross-method comparability). Run: rp-train +experiment=cifar10_baseline
+defaults:
+  - override /data: cifar10
+  - override /model: cnn
+  - override /optimizer: adamw
+  - override /scheduler: cosine
+
+seed: 42
+run_name: cifar10_erm_baseline
+
+mlflow:
+  experiment_name: cifar10-erm
+
+checkpoint:
+  monitor: val/acc
+  mode: max
+
+trainer:
+  max_epochs: 6
+
+optimizer:
+  lr: 0.002
+
+scheduler:
+  T_max: 6

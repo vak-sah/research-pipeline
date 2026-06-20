@@ -1,0 +1,12 @@
+_target_: research_pipeline.data.datamodule.CIFAR10DataModule
+data_dir: ${oc.env:RP_DATA_DIR,data}
+batch_size: 128
+num_workers: 0      # overridden at runtime by the device plan
+pin_memory: false   # overridden at runtime by the device plan
+download: true
+transform:
+  _target_: research_pipeline.data.transforms.default_cifar_transform
+splitter:
+  _target_: research_pipeline.data.splitter.RandomSplitter
+  val_fraction: 0.1
+  seed: 42

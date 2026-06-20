@@ -1,0 +1,19 @@
+# Run outputs and tracking (root-anchored so source packages are unaffected)
+/outputs/
+/mlruns/
+
+# Dataset cache (root-anchored; does NOT match src/research_pipeline/data/)
+/data/
+
+# Environments
+envs/
+.venv/
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/

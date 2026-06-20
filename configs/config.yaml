@@ -1,0 +1,21 @@
+# Root config: attaches the structured schema, then composes one file per group.
+defaults:
+  - config_schema      # structured/typed base -> bad overrides fail at startup
+  - _self_
+  - data: cifar10
+  - model: cnn
+  - loss: composite
+  - optimizer: adamw
+  - scheduler: cosine
+  - trainer: default
+  - callbacks: default
+
+seed: 42
+run_name: null
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d_%H-%M-%S}
+  sweep:
+    dir: outputs/multirun/${now:%Y-%m-%d_%H-%M-%S}
+    subdir: ${hydra.job.num}

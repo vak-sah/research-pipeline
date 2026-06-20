@@ -1,0 +1,4 @@
+_target_: research_pipeline.models.mlp.MLP
+in_dim: 3072
+hidden_dim: 256
+num_classes: 10

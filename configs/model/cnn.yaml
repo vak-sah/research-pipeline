@@ -1,0 +1,4 @@
+_target_: research_pipeline.models.cnn.SmallCNN
+num_classes: 10
+in_channels: 3
+width: 48
